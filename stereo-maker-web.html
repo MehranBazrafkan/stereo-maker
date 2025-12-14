@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stereo Vision App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+  <h1 class="text-3xl font-bold mb-6 text-center">Stereo Vision Generator</h1>
+
+  <!-- Upload section -->
+  <div class="flex flex-col md:flex-row gap-4 w-full max-w-3xl mb-6">
+    <!-- Left image -->
+    <div class="flex-1 flex flex-col items-center bg-white p-4 rounded-lg shadow">
+      <label class="mb-2 font-semibold">0.5x Image (Left)</label>
+      <input type="file" id="imgLeft" accept="image/*" class="mb-2">
+      <img id="previewLeft" class="max-h-40 rounded border" />
+    </div>
+
+    <!-- Right image -->
+    <div class="flex-1 flex flex-col items-center bg-white p-4 rounded-lg shadow">
+      <label class="mb-2 font-semibold">1.0x Image (Right)</label>
+      <input type="file" id="imgRight" accept="image/*" class="mb-2">
+      <img id="previewRight" class="max-h-40 rounded border" />
+    </div>
+  </div>
+
+  <!-- Generate button -->
+  <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow mb-6">
+    Generate Stereo Output
+  </button>
+
+  <!-- Result section -->
+  <div class="flex flex-col items-center w-full max-w-3xl">
+    <label class="mb-2 font-semibold">Stereo Output</label>
+    <img id="stereoOutput" class="max-w-full rounded shadow-lg mb-2 hidden"/>
+    <a id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow hidden">
+      Download
+    </a>
+  </div>
+
+  <script>
+    const imgLeftInput = document.getElementById('imgLeft');
+    const imgRightInput = document.getElementById('imgRight');
+    const previewLeft = document.getElementById('previewLeft');
+    const previewRight = document.getElementById('previewRight');
+    const generateBtn = document.getElementById('generateBtn');
+    const stereoOutput = document.getElementById('stereoOutput');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // Preview images when uploaded
+    imgLeftInput.addEventListener('change', () => {
+      const file = imgLeftInput.files[0];
+      if(file){
+        previewLeft.src = URL.createObjectURL(file);
+      }
+    });
+
+    imgRightInput.addEventListener('change', () => {
+      const file = imgRightInput.files[0];
+      if(file){
+        previewRight.src = URL.createObjectURL(file);
+      }
+    });
+
+    // Generate stereo image
+    generateBtn.addEventListener('click', async () => {
+      if(!imgLeftInput.files[0] || !imgRightInput.files[0]){
+        alert("Please upload both images.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('left', imgLeftInput.files[0]);
+      formData.append('right', imgRightInput.files[0]);
+
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Processing...';
+
+      try {
+        const response = await fetch('http://localhost:5000/stereo', {
+          method: 'POST',
+          body: formData
+        });
+
+        if(!response.ok){
+          const err = await response.json();
+          alert('Error: ' + (err.error || response.statusText));
+          generateBtn.disabled = false;
+          generateBtn.textContent = 'Generate Stereo Output';
+          return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        stereoOutput.src = url;
+        stereoOutput.classList.remove('hidden');
+
+        // Set dynamic UUID-based filename for download
+        const uuid = crypto.randomUUID(); 
+        downloadBtn.href = url;
+        downloadBtn.download = `stereo-${uuid}.png`;
+        downloadBtn.classList.remove('hidden');
+
+      } catch(err){
+        console.error(err);
+        alert("An error occurred while processing images.");
+      }
+
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate Stereo Output';
+    });
+  </script>
+
+</body>
+</html>
